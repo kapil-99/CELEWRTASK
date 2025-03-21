@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>All Files Dashboard</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+            color: #333;
+        }
+        h2 {
+            color: #0277bd;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2em;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: #ffffff;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #0288d1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #01579b;
+        }
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 200px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #0277bd;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        th:hover {
+            background: #01579b;
+        }
+        tr:nth-child(even) {
+            background: #f5f5f5;
+        }
+        tr:hover {
+            background: #e0f7fa;
+        }
+        .status-new { color: #d81b60; font-weight: bold; }
+        .status-in-progress { color: #fb8c00; font-weight: bold; }
+        .status-completed { color: #388e3c; font-weight: bold; }
+        .action-btn {
+            padding: 5px 10px;
+            margin-right: 5px;
+            border-radius: 3px;
+            color: white;
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        .copy-btn { background: #4caf50; }
+        .copy-btn:hover { background: #388e3c; }
+        .download-btn { background: #ffb300; color: black; }
+        .download-btn:hover { background: #ffa000; }
+        #loading {
+            display: none;
+            text-align: center;
+            font-size: 1.2em;
+            color: #0277bd;
+            margin: 20px 0;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #0288d1;
+            border-top: 3px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #summary {
+            background: #ffffff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        @media (max-width: 768px) {
+            .controls { flex-direction: column; align-items: center; }
+            input[type="text"] { width: 100%; }
+            th, td { padding: 10px; font-size: 0.9em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>All Files Dashboard</h2>
+        <div class="controls">
+            <input type="text" id="searchInput" placeholder="Search by file name..." onkeyup="filterTable()">
+            <div>
+                <a href="https://script.google.com/macros/s/AKfycby9QYIvkaAAcJLuqF_2hZSl995GSX3ZLm57AsVBrRl4RY5NaDniwIbeknWfam0B69yS/exec" target="_blank" style="text-decoration: none; color: #e00e0e; font-weight: bold; font-size: 1.5em;" onclick="showPopup()">New Update</a>
+                <div id="popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); z-index: 1000; text-align: center;">
+                    <img id="popupImage" src="https://via.placeholder.com/300" alt="Live Image" style="width: 100%; height: auto; border-radius: 10px;">
+                    <button onclick="closePopup()" style="margin-top: 10px; padding: 10px 20px; background-color: #e00e0e; color: white; border: none; border-radius: 5px; cursor: pointer;">Close</button>
+                </div>
+                <div id="overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999;" onclick="closePopup()"></div>            
+                <button onclick="loadData()">Refresh</button>
+                <button onclick="sortTable(0)">Sort by Name</button>
+                <button onclick="sortTable(2)">Sort by Date</button>
+            </div>
+        </div>
+        <div id="loading">Loading... <span class="spinner"></span></div>
+        <table id="dataTable">
+            <tr>
+                <th>File Name</th>
+                <th>Link</th>
+                <th>Upload Date</th>
+                <th>Authority</th>
+                <th>Sub-owner</th>
+                <th>HQ Owner</th>
+                <th>Status</th>
+                <th>Action Plan</th>
+                <th>Actions</th>
+            </tr>
+        </table>
+        <div id="summary"></div>
+    </div>
+
+    <script>
+        const SHEET_ID = '1KgKY8KojhOgdqLIE8Dt4RDmqbiyLQOErD3q0CJTlhDU';
+        const API_KEY = 'AIzaSyBkKVtdfFbFfdFE8FqSaUGZvptxj0Fysco';
+        const RANGE = 'All Files!A1:H100';
+        let tableData = [];
+
+        // Load data from Google Sheets
+        function loadData() {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`)
+                .then(response => response.json())
+                .then(data => {
+                    tableData = data.values.slice(1); // Skip header
+                    renderTable(tableData);
+                    updateSummary(tableData);
+                    loading.style.display = 'none';
+                })
+                .catch(error => {
+                    document.getElementById('summary').innerHTML = `Error: ${error}`;
+                    loading.style.display = 'none';
+                });
+        }
+
+        // Render table
+        function renderTable(data) {
+            const table = document.getElementById('dataTable');
+            while (table.rows.length > 1) table.deleteRow(1);
+
+            if (data && data.length > 0) {
+                data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    const statusClass = `status-${row[6]?.toLowerCase().replace(' ', '-') || 'new'}`;
+                    tr.innerHTML = `
+                        <td>${row[0] || 'N/A'}</td>
+                        <td><a href="${row[1]}" target="_blank" style="color: #0277bd;">View File</a></td>
+                        <td>${row[2] ? new Date(row[2]).toLocaleDateString() : 'N/A'}</td>
+                        <td>${row[3] || 'N/A'}</td>
+                        <td>${row[4] || 'N/A'}</td>
+                        <td>${row[5] || 'N/A'}</td>
+                        <td class="${statusClass}">${row[6] || 'New'}</td>
+                        <td>${row[7] || ''}</td>
+                        <td>
+                            <button class="action-btn copy-btn" onclick="copyLink('${row[1]}')">Copy</button>
+                            <button class="action-btn download-btn" onclick="downloadFile('${row[1]}')">Download</button>
+                        </td>
+                    `;
+                    table.appendChild(tr);
+                });
+            } else {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td colspan="9" style="text-align: center; color: #d32f2f;">No data available.</td>`;
+                table.appendChild(tr);
+            }
+        }
+
+        // Update summary stats
+        function updateSummary(data) {
+            const summary = document.getElementById('summary');
+            const statusCounts = { 'New': 0, 'In Progress': 0, 'Completed': 0 };
+            data.forEach(row => {
+                const status = row[6] || 'New';
+                if (statusCounts[status] !== undefined) statusCounts[status]++;
+            });
+            summary.innerHTML = `
+                <h3 style="color: #0277bd;">Summary</h3>
+                <p>Total Files: <strong>${data.length}</strong></p>
+                <p>New: <span style="color: #d81b60;">${statusCounts['New']}</span></p>
+                <p>In Progress: <span style="color: #fb8c00;">${statusCounts['In Progress']}</span></p>
+                <p>Completed: <span style="color: #388e3c;">${statusCounts['Completed']}</span></p>
+            `;
+        }
+
+        // Sort table by column
+        function sortTable(column) {
+            tableData.sort((a, b) => {
+                const valA = column === 2 ? new Date(a[column] || 0) : (a[column] || '');
+                const valB = column === 2 ? new Date(b[column] || 0) : (b[column] || '');
+                return typeof valA === 'string' ? valA.localeCompare(valB) : valA - valB;
+            });
+            renderTable(tableData);
+        }
+
+        // Filter table by search input
+        function filterTable() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            const filteredData = tableData.filter(row => row[0]?.toLowerCase().includes(searchValue));
+            renderTable(filteredData);
+            updateSummary(filteredData);
+        }
+
+        // Copy link to clipboard
+        function copyLink(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Link copied to clipboard!');
+            }).catch(err => alert('Failed to copy link: ' + err));
+        }
+
+        // Download file
+        function downloadFile(url) {
+            const link = document.createElement('a');
+            link.href = url.replace('/view', '/uc?export=download');
+            link.download = '';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Load data on page load
+        window.onload = loadData;
+    </script>
+</body>
+</html>
