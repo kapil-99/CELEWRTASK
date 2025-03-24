@@ -1,73 +1,116 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>All Files Dashboard</title>
     <style>
         body {
             margin: 0;
-            padding: 20px;
+            padding: 0;
             font-family: 'Arial', sans-serif;
             background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
             color: #333;
+            overflow-x: hidden;
+        }
+        .container {
+            display: flex;
+            flex-direction: row;
+            min-height: 100vh;
+        }
+        .menu-toggle {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: #0288d1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .menu-toggle:hover {
+            background: #01579b;
+        }
+        .sidebar {
+            width: 250px;
+            background: #0277bd;
+            color: white;
+            padding: 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            transform: translateX(0);
+            z-index: 999;
+        }
+        .sidebar.active {
+            transform: translateX(-100%);
+        }
+        .main-content {
+            flex-grow: 1;
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+        .main-content.full {
+            margin-left: 0;
         }
         h2 {
             color: #0277bd;
             text-align: center;
             margin-bottom: 20px;
-            font-size: 2em;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
         }
         .controls {
             display: flex;
-            justify-content: space-between;
             flex-wrap: wrap;
             gap: 10px;
-            margin-bottom: 20px;
-            background: #ffffff;
+            background: #fff;
             padding: 15px;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
-        button {
+        button, .action-btn {
             padding: 10px 20px;
-            background-color: #0288d1;
+            background: #0288d1;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background 0.3s;
         }
-        button:hover {
-            background-color: #01579b;
+        button:hover, .action-btn:hover {
+            background: #01579b;
         }
-        input[type="text"] {
+        input[type="text"], select {
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 5px;
-            width: 200px;
+            width: 100%;
+            max-width: 250px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            background: #ffffff;
+            background: #fff;
             border-radius: 10px;
-            overflow: hidden;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
         th, td {
-            padding: 15px;
+            padding: 12px;
             text-align: left;
             border-bottom: 1px solid #eee;
+            font-size: calc(0.7em + 0.3vw);
         }
         th {
             background: #0277bd;
             color: white;
             cursor: pointer;
-            transition: background-color 0.3s;
         }
         th:hover {
             background: #01579b;
@@ -81,20 +124,9 @@
         .status-new { color: #d81b60; font-weight: bold; }
         .status-in-progress { color: #fb8c00; font-weight: bold; }
         .status-completed { color: #388e3c; font-weight: bold; }
-        .action-btn {
-            padding: 5px 10px;
-            margin-right: 5px;
-            border-radius: 3px;
-            color: white;
-            text-decoration: none;
-            font-size: 0.9em;
-        }
         .copy-btn { background: #4caf50; }
         .copy-btn:hover { background: #388e3c; }
-        .download-btn { background: #ffb300; color: black; }
-        .download-btn:hover { background: #ffa000; }
         #loading {
-            display: none;
             text-align: center;
             font-size: 1.2em;
             color: #0277bd;
@@ -108,89 +140,143 @@
             border-top: 3px solid transparent;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-left: 10px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #summary {
-            background: #ffffff;
+        #summary, #pagination {
+            background: #fff;
             padding: 15px;
             border-radius: 10px;
             margin-top: 20px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
         @media (max-width: 768px) {
-            .controls { flex-direction: column; align-items: center; }
-            input[type="text"] { width: 100%; }
-            th, td { padding: 10px; font-size: 0.9em; }
+            .controls {
+                flex-direction: column;
+            }
+            input[type="text"], select {
+                max-width: 100%;
+            }
+            th, td {
+                font-size: 0.8em;
+                padding: 8px;
+            }
+            .sidebar {
+                width: 200px;
+            }
+            .main-content {
+                margin-left: 200px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>All Files Dashboard</h2>
-        <div class="controls">
-            <input type="text" id="searchInput" placeholder="Search by file name..." onkeyup="filterTable()">
-            <div>
-                <a href="https://script.google.com/macros/s/AKfycby9QYIvkaAAcJLuqF_2hZSl995GSX3ZLm57AsVBrRl4RY5NaDniwIbeknWfam0B69yS/exec" target="_blank" style="text-decoration: none; color: #e00e0e; font-weight: bold; font-size: 1.5em;" onclick="showPopup()">New Update</a>
-                <div id="popup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); z-index: 1000; text-align: center;">
-                    <img id="popupImage" src="https://via.placeholder.com/300" alt="Live Image" style="width: 100%; height: auto; border-radius: 10px;">
-                    <button onclick="closePopup()" style="margin-top: 10px; padding: 10px 20px; background-color: #e00e0e; color: white; border: none; border-radius: 5px; cursor: pointer;">Close</button>
-                </div>
-                <div id="overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999;" onclick="closePopup()"></div>            
-                <button onclick="loadData()">Refresh</button>
-                <button onclick="sortTable(0)">Sort by Name</button>
-                <button onclick="sortTable(2)">Sort by Date</button>
-            </div>
+        <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
+        <div class="sidebar" id="sidebar">
+            <h2>Dashboard Menu</h2>
+            <ul>
+                <li onclick="loadData()">Refresh Data</li>                
+                <li><a href="https://script.google.com/macros/s/AKfycby9QYIvkaAAcJLuqF_2hZSl995GSX3ZLm57AsVBrRl4RY5NaDniwIbeknWfam0B69yS/exec" style="color: white; text-decoration: none;">New Data Upload</a></li>
+                <li onclick="toggleDarkMode()">Toggle Dark Mode</li>
+            </ul>
         </div>
-        <div id="loading">Loading... <span class="spinner"></span></div>
-        <table id="dataTable">
-            <tr>
-                <th>File Name</th>
-                <th>Link</th>
-                <th>Upload Date</th>
-                <th>Authority</th>
-                <th>Sub-owner</th>
-                <th>HQ Owner</th>
-                <th>Status</th>
-                <th>Action Plan</th>
-                <th>Actions</th>
-            </tr>
-        </table>
-        <div id="summary"></div>
+        <div class="main-content" id="mainContent">
+            <h2>All Files Dashboard</h2>
+            <div class="controls">
+                <select id="sheetSelector" onchange="loadData()"></select>
+                <input type="text" id="searchInput" placeholder="Search by file name..." onkeyup="filterTable()">
+                <select id="statusFilter" onchange="filterTable()">
+                    <option value="">All Statuses</option>
+                    <option value="New">New</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                </select>
+                <button onclick="clearFilters()">Clear Filters</button>
+            </div>
+            <div id="loading">Loading... <span class="spinner"></span></div>
+            <table id="dataTable">
+                <tr>
+                    <th onclick="sortTable(0)">File Name</th>
+                    <th>Link</th>
+                    <th onclick="sortTable(2)">Upload Date</th>
+                    <th onclick="sortTable(3)">Authority</th>
+                    <th onclick="sortTable(4)">Sub-owner</th>
+                    <th onclick="sortTable(5)">HQ Owner</th>
+                    <th onclick="sortTable(6)">Status</th>
+                    <th>Action Plan</th>
+                    <th>Actions</th>
+                </tr>
+            </table>
+            <div id="pagination"></div>
+            <div id="summary"></div>
+        </div>
     </div>
 
     <script>
         const SHEET_ID = '1KgKY8KojhOgdqLIE8Dt4RDmqbiyLQOErD3q0CJTlhDU';
         const API_KEY = 'AIzaSyBkKVtdfFbFfdFE8FqSaUGZvptxj0Fysco';
-        const RANGE = 'All Files!A1:H100';
+        let RANGE = 'All Files!A1:J';
         let tableData = [];
+        let currentPage = 1;
+        const rowsPerPage = 10;
 
-        // Load data from Google Sheets
-        function loadData() {
-            const loading = document.getElementById('loading');
-            loading.style.display = 'block';
-
-            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`)
+        // Fetch sheet names
+        function fetchSheetNames() {
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?key=${API_KEY}`)
                 .then(response => response.json())
                 .then(data => {
-                    tableData = data.values.slice(1); // Skip header
-                    renderTable(tableData);
-                    updateSummary(tableData);
-                    loading.style.display = 'none';
-                })
-                .catch(error => {
-                    document.getElementById('summary').innerHTML = `Error: ${error}`;
-                    loading.style.display = 'none';
+                    const sheetSelector = document.getElementById('sheetSelector');
+                    sheetSelector.innerHTML = '';
+                    data.sheets.forEach(sheet => {
+                        const option = document.createElement('option');
+                        option.value = `${sheet.properties.title}!A1:H`;
+                        option.textContent = sheet.properties.title;
+                        sheetSelector.appendChild(option);
+                    });
+                    loadData();
                 });
         }
 
-        // Render table
+        // Load data
+        function loadData() {
+            RANGE = document.getElementById('sheetSelector').value;
+            document.getElementById('loading').style.display = 'block';
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`)
+                .then(response => response.json())
+                .then(data => {
+                    const table = document.getElementById('dataTable');
+                    table.innerHTML = ''; // Clear existing table content
+
+                    // Set table headers dynamically from the first row
+                    const headers = data.values[0];
+                    const headerRow = document.createElement('tr');
+                    headers.forEach((header, index) => {
+                        const th = document.createElement('th');
+                        th.textContent = header;
+                        th.onclick = () => sortTable(index); // Add sorting functionality
+                        headerRow.appendChild(th);
+                    });
+                    table.appendChild(headerRow);
+
+                    // Set table data
+                    tableData = data.values.slice(1); // Exclude the first row (headers)
+                    renderTable(tableData);
+                    updateSummary(tableData);
+                    updatePagination(tableData);
+                    document.getElementById('loading').style.display = 'none';
+                });
+        }
+
+        // Render table with pagination
         function renderTable(data) {
             const table = document.getElementById('dataTable');
             while (table.rows.length > 1) table.deleteRow(1);
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const paginatedData = data.slice(start, end);
 
-            if (data && data.length > 0) {
-                data.forEach(row => {
+            if (paginatedData.length > 0) {
+                paginatedData.forEach(row => {
                     const tr = document.createElement('tr');
                     const statusClass = `status-${row[6]?.toLowerCase().replace(' ', '-') || 'new'}`;
                     tr.innerHTML = `
@@ -202,28 +288,20 @@
                         <td>${row[5] || 'N/A'}</td>
                         <td class="${statusClass}">${row[6] || 'New'}</td>
                         <td>${row[7] || ''}</td>
-                        <td>
-                            <button class="action-btn copy-btn" onclick="copyLink('${row[1]}')">Copy</button>
-                            <button class="action-btn download-btn" onclick="downloadFile('${row[1]}')">Download</button>
-                        </td>
+                        <td><button class="action-btn copy-btn" onclick="copyLink('${row[1]}')">Copy</button></td>
                     `;
                     table.appendChild(tr);
                 });
             } else {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td colspan="9" style="text-align: center; color: #d32f2f;">No data available.</td>`;
-                table.appendChild(tr);
+                table.innerHTML += `<tr><td colspan="9" style="text-align: center; color: #d32f2f;">No data available.</td></tr>`;
             }
         }
 
-        // Update summary stats
+        // Update summary
         function updateSummary(data) {
             const summary = document.getElementById('summary');
             const statusCounts = { 'New': 0, 'In Progress': 0, 'Completed': 0 };
-            data.forEach(row => {
-                const status = row[6] || 'New';
-                if (statusCounts[status] !== undefined) statusCounts[status]++;
-            });
+            data.forEach(row => statusCounts[row[6] || 'New'] = (statusCounts[row[6] || 'New'] || 0) + 1);
             summary.innerHTML = `
                 <h3 style="color: #0277bd;">Summary</h3>
                 <p>Total Files: <strong>${data.length}</strong></p>
@@ -233,43 +311,97 @@
             `;
         }
 
-        // Sort table by column
+        // Pagination
+        function updatePagination(data) {
+            const totalPages = Math.ceil(data.length / rowsPerPage);
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = `
+                <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>
+                <span>Page ${currentPage} of ${totalPages}</span>
+                <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+            `;
+        }
+
+        function changePage(page) {
+            const totalPages = Math.ceil(tableData.length / rowsPerPage);
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                renderTable(tableData);
+                updatePagination(tableData);
+            }
+        }
+
+        // Sort table
         function sortTable(column) {
             tableData.sort((a, b) => {
-                const valA = column === 2 ? new Date(a[column] || 0) : (a[column] || '');
-                const valB = column === 2 ? new Date(b[column] || 0) : (b[column] || '');
-                return typeof valA === 'string' ? valA.localeCompare(valB) : valA - valB;
+                const valA = a[column] || '';
+                const valB = b[column] || '';
+                return valA.localeCompare(valB);
             });
             renderTable(tableData);
+            updatePagination(tableData);
         }
 
-        // Filter table by search input
+        // Filter table
         function filterTable() {
-            const searchValue = document.getElementById('searchInput').value.toLowerCase();
-            const filteredData = tableData.filter(row => row[0]?.toLowerCase().includes(searchValue));
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const filteredData = tableData.filter(row => {
+                const matchesSearch = row.some(cell => (cell || '').toLowerCase().includes(searchInput));
+                const matchesStatus = !statusFilter || (row[6] || 'New') === statusFilter;
+                return matchesSearch && matchesStatus;
+            });
+            currentPage = 1;
             renderTable(filteredData);
             updateSummary(filteredData);
+            updatePagination(filteredData);
         }
 
-        // Copy link to clipboard
+        // Clear filters
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            currentPage = 1;
+            renderTable(tableData);
+            updateSummary(tableData);
+            updatePagination(tableData);
+        }
+
+        // Copy link
         function copyLink(url) {
-            navigator.clipboard.writeText(url).then(() => {
-                alert('Link copied to clipboard!');
-            }).catch(err => alert('Failed to copy link: ' + err));
+            navigator.clipboard.writeText(url).then(() => alert('Link copied!'));
         }
 
-        // Download file
-        function downloadFile(url) {
-            const link = document.createElement('a');
-            link.href = url.replace('/view', '/uc?export=download');
-            link.download = '';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+
+        // Toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            sidebar.classList.toggle('active');
+            mainContent.classList.toggle('full');
         }
 
-        // Load data on page load
-        window.onload = loadData;
+        // Toggle dark mode
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            if (document.body.classList.contains('dark-mode')) {
+                document.body.style.background = 'linear-gradient(135deg, #1e3c72, #2a5298)';
+                document.body.style.color = '#fff';
+                document.querySelectorAll('table, .controls, #summary, #pagination').forEach(el => {
+                    el.style.background = '#2c3e50';
+                    el.style.color = '#fff';
+                });
+            } else {
+                document.body.style.background = 'linear-gradient(135deg, #e0f7fa, #b2ebf2)';
+                document.body.style.color = '#333';
+                document.querySelectorAll('table, .controls, #summary, #pagination').forEach(el => {
+                    el.style.background = '#fff';
+                    el.style.color = '#333';
+                });
+            }
+        }
+
+        window.onload = fetchSheetNames;
     </script>
 </body>
 </html>
