@@ -127,10 +127,21 @@
         .copy-btn { background: #4caf50; }
         .copy-btn:hover { background: #388e3c; }
         #loading {
-            text-align: center;
-            font-size: 1.2em;
-            color: #0277bd;
-            margin: 20px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(211, 224, 221, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 6.5em;
+            color: #25e90c;
+            z-index: 10;
+        }
+        #loading .spinner {
+            margin-left: 10px;
         }
         .spinner {
             display: inline-block;
@@ -174,11 +185,14 @@
         <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
         <div class="sidebar" id="sidebar">
             <h2>Dashboard Menu</h2>
-            <ul>
-                <li onclick="loadData()">Refresh Data</li>                
-                <li><a href="https://script.google.com/macros/s/AKfycby9QYIvkaAAcJLuqF_2hZSl995GSX3ZLm57AsVBrRl4RY5NaDniwIbeknWfam0B69yS/exec" style="color: white; text-decoration: none;">New Data Upload</a></li>
-                <li onclick="toggleDarkMode()">Toggle Dark Mode</li>
-            </ul>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button onclick="loadData()">Refresh Data</button>
+                <a href="https://script.google.com/macros/s/AKfycby9QYIvkaAAcJLuqF_2hZSl995GSX3ZLm57AsVBrRl4RY5NaDniwIbeknWfam0B69yS/exec" style="text-decoration: none;">
+                    <button style="background: red; color: white; font-size: 1.2em; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer;">New Data Upload</button>
+                </a>
+                </a>
+                <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
+            </div>
         </div>
         <div class="main-content" id="mainContent">
             <h2>All Files Dashboard</h2>
@@ -259,7 +273,11 @@
                     table.appendChild(headerRow);
 
                     // Set table data
-                    tableData = data.values.slice(1); // Exclude the first row (headers)
+                    tableData = data.values.slice(1).map(row => {
+                        // Ensure column 3 (Upload Date) has text
+                        row[2] = row[2] || 'No Date Provided';
+                        return row;
+                    });
                     renderTable(tableData);
                     updateSummary(tableData);
                     updatePagination(tableData);
@@ -282,7 +300,7 @@
                     tr.innerHTML = `
                         <td>${row[0] || 'N/A'}</td>
                         <td><a href="${row[1]}" target="_blank" style="color: #0277bd;">View File</a></td>
-                        <td>${row[2] ? new Date(row[2]).toLocaleDateString() : 'N/A'}</td>
+                        <td>${row[2] || 'N/A'}</td>
                         <td>${row[3] || 'N/A'}</td>
                         <td>${row[4] || 'N/A'}</td>
                         <td>${row[5] || 'N/A'}</td>
@@ -346,11 +364,22 @@
         function filterTable() {
             const searchInput = document.getElementById('searchInput').value.toLowerCase();
             const statusFilter = document.getElementById('statusFilter').value;
+
             const filteredData = tableData.filter(row => {
-                const matchesSearch = row.some(cell => (cell || '').toLowerCase().includes(searchInput));
+                // Perform a deep search across all columns and nested data
+                const matchesSearch = row.some(cell => {
+                    if (typeof cell === 'string') {
+                        return cell.toLowerCase().includes(searchInput);
+                    } else if (typeof cell === 'object' && cell !== null) {
+                        return JSON.stringify(cell).toLowerCase().includes(searchInput);
+                    }
+                    return false;
+                });
+
                 const matchesStatus = !statusFilter || (row[6] || 'New') === statusFilter;
                 return matchesSearch && matchesStatus;
             });
+
             currentPage = 1;
             renderTable(filteredData);
             updateSummary(filteredData);
@@ -385,11 +414,11 @@
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
             if (document.body.classList.contains('dark-mode')) {
-                document.body.style.background = 'linear-gradient(135deg, #1e3c72, #2a5298)';
-                document.body.style.color = '#fff';
+                document.body.style.background = 'linear-gradient(135deg, #121212, #323232)';
+                document.body.style.color = '#e0e0e0';
                 document.querySelectorAll('table, .controls, #summary, #pagination').forEach(el => {
-                    el.style.background = '#2c3e50';
-                    el.style.color = '#fff';
+                    el.style.background = '#1e1e1e';
+                    el.style.color = '#e0e0e0';
                 });
             } else {
                 document.body.style.background = 'linear-gradient(135deg, #e0f7fa, #b2ebf2)';
