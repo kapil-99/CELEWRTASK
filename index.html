@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All Files Dashboard</title>
+    <title>CELE_Dashboard</title>
     <style>
         body {
             margin: 0;
@@ -15,14 +15,22 @@
         }
         .container {
             display: flex;
-            flex-direction: row;
+            flex-direction: column;
             min-height: 100vh;
         }
-        .menu-toggle {
-            position: fixed;
-            top: 10px;
-            left: 10px;
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0277bd;
+            color: white;
+            padding: 10px 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
             z-index: 1000;
+        }
+        .top-bar button {
             background: #0288d1;
             color: white;
             border: none;
@@ -31,34 +39,12 @@
             cursor: pointer;
             transition: background 0.3s;
         }
-        .menu-toggle:hover {
+        .top-bar button:hover {
             background: #01579b;
-        }
-        .sidebar {
-            width: 250px;
-            background: #0277bd;
-            color: white;
-            padding: 20px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100%;
-            overflow-y: auto;
-            transition: transform 0.3s ease;
-            transform: translateX(0);
-            z-index: 999;
-        }
-        .sidebar.active {
-            transform: translateX(-100%);
         }
         .main-content {
             flex-grow: 1;
-            margin-left: 250px;
             padding: 20px;
-            transition: margin-left 0.3s ease;
-        }
-        .main-content.full {
-            margin-left: 0;
         }
         h2 {
             color: #0277bd;
@@ -171,20 +157,17 @@
                 font-size: 0.8em;
                 padding: 8px;
             }
-            .sidebar {
-                width: 200px;
-            }
-            .main-content {
-                margin-left: 200px;
-            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
+        <!-- Adjust summary section for horizontal scrolling -->
+        <div id="summary" style="display: flex; justify-content: space-between; align-items: center; overflow-x: auto; white-space: nowrap;">
+            <!-- Summary content will be dynamically updated -->
+        </div>
         <div class="sidebar" id="sidebar">
-            <h2>Dashboard Menu</h2>
+          
             <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                 <button onclick="loadData()">Refresh Data</button>
                 <a href="https://script.google.com/macros/s/AKfycby9QYIvkaAAcJLuqF_2hZSl995GSX3ZLm57AsVBrRl4RY5NaDniwIbeknWfam0B69yS/exec" style="text-decoration: none;">
@@ -195,7 +178,7 @@
             </div>
         </div>
         <div class="main-content" id="mainContent">
-            <h2>All Files Dashboard</h2>
+            
             <div class="controls">
                 <select id="sheetSelector" onchange="loadData()"></select>
                 <input type="text" id="searchInput" placeholder="Search by file name..." onkeyup="filterTable()">
@@ -205,24 +188,28 @@
                     <option value="In Progress">In Progress</option>
                     <option value="Completed">Completed</option>
                 </select>
-                <button onclick="clearFilters()">Clear Filters</button>
+                
             </div>
             <div id="loading">Loading... <span class="spinner"></span></div>
-            <table id="dataTable">
-                <tr>
-                    <th onclick="sortTable(0)">File Name</th>
-                    <th>Link</th>
-                    <th onclick="sortTable(2)">Upload Date</th>
-                    <th onclick="sortTable(3)">Authority</th>
-                    <th onclick="sortTable(4)">Sub-owner</th>
-                    <th onclick="sortTable(5)">HQ Owner</th>
-                    <th onclick="sortTable(6)">Status</th>
-                    <th>Action Plan</th>
-                    <th>Actions</th>
-                </tr>
+            <table id="dataTable" style="position: relative; border-collapse: separate; border-spacing: 0;">
+                <thead>
+                    <tr>
+                        <th style="position: sticky; left: 0; background: #0277bd; color: white; z-index: 2;">File Name</th>
+                        <th>Link</th>
+                        <th onclick="sortTable(2)">Upload Date</th>
+                        <th onclick="sortTable(3)">Authority</th>
+                        <th onclick="sortTable(4)">Sub-owner</th>
+                        <th onclick="sortTable(5)">HQ Owner</th>
+                        <th onclick="sortTable(6)">Status</th>
+                        <th>Action Plan</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Table rows will be dynamically rendered -->
+                </tbody>
             </table>
             <div id="pagination"></div>
-            <div id="summary"></div>
         </div>
     </div>
 
@@ -232,7 +219,7 @@
         let RANGE = 'All Files!A1:J';
         let tableData = [];
         let currentPage = 1;
-        const rowsPerPage = 10;
+        const rowsPerPage = 10000;
 
         // Fetch sheet names
         function fetchSheetNames() {
@@ -243,7 +230,7 @@
                     sheetSelector.innerHTML = '';
                     data.sheets.forEach(sheet => {
                         const option = document.createElement('option');
-                        option.value = `${sheet.properties.title}!A1:H`;
+                        option.value = `${sheet.properties.title}!A1:J`;
                         option.textContent = sheet.properties.title;
                         sheetSelector.appendChild(option);
                     });
@@ -298,7 +285,7 @@
                     const tr = document.createElement('tr');
                     const statusClass = `status-${row[6]?.toLowerCase().replace(' ', '-') || 'new'}`;
                     tr.innerHTML = `
-                        <td>${row[0] || 'N/A'}</td>
+                        <td style="position: sticky; left: 0; background: #f5f5f5; z-index: 1;">${row[0] || 'N/A'}</td>
                         <td><a href="${row[1]}" target="_blank" style="color: #0277bd;">View File</a></td>
                         <td>${row[2] || 'N/A'}</td>
                         <td>${row[3] || 'N/A'}</td>
@@ -384,16 +371,6 @@
             renderTable(filteredData);
             updateSummary(filteredData);
             updatePagination(filteredData);
-        }
-
-        // Clear filters
-        function clearFilters() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('statusFilter').value = '';
-            currentPage = 1;
-            renderTable(tableData);
-            updateSummary(tableData);
-            updatePagination(tableData);
         }
 
         // Copy link
