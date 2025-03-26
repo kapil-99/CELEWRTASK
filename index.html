@@ -52,7 +52,7 @@
         }
         .main-content {
             flex-grow: 1;
-            background: white;
+            background: rgb(237, 247, 237);
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
@@ -83,11 +83,13 @@
             width: 100%;
             border-collapse: collapse;
             background: white;
+            table-layout: auto;
         }
         th, td {
             padding: 15px;
             text-align: left;
             border-bottom: 1px solid #eee;
+            word-wrap: break-word;
         }
         th {
             background: #3498db;
@@ -169,15 +171,44 @@
         .dark-mode th {
             background: #2980b9;
         }
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 10px;
-            }
-            .controls {
-                grid-template-columns: 1fr;
-            }
+        table td, table th {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
+        .wrap-text td {
+            white-space: normal !important;
+            word-break: break-word;
+        }
+        .document-tooltip {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(52, 152, 219, 0.9);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: none;
+            max-width: 80%;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .toggle-wrap {
+            margin-left: 20px;
+            display: inline-flex;
+            align-items: center;
+            font-size: 1.9em;
+        }
+        .toggle-wrap input {
+            margin-right: 5px;
+        }
+        
     </style>
 </head>
 <body>
@@ -196,13 +227,16 @@
             <div id="summary"></div>
             <div class="controls">
                 <select id="sheetSelector" onchange="loadData()"></select>
-                <input type="text" id="searchInput" placeholder="Search files..." onkeyup="filterTable()">
+                <input type="text" id="searchInput" placeholder="Search across all sheets..." onkeyup="filterTable()">
                 <select id="statusFilter" onchange="filterTable()">
                     <option value="">All Statuses</option>
-                    <option value="New">New</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
                 </select>
+                <button id="searchAllSheets" onclick="searchAcrossAllSheets()" style="font-size: 1.9em; color: rgb(18, 24, 7);">Search All Sheets</button>
+                <label class="toggle-wrap">
+                    <input type="checkbox" id="toggleWrap" style="transform: scale(1.5);" onchange="toggleTextWrap()">
+                    Wrap Text
+                </label>
+                
             </div>
             <div class="table-container">
                 <table id="dataTable">
@@ -225,18 +259,24 @@
             <div id="loading" style="display: none;">Loading... <span class="spinner"></span></div>
         </div>
     </div>
+    <!-- Document tooltip popup that appears at the top -->
+    <div class="document-tooltip" id="documentTooltip"></div>
 
     <script>
         const SHEET_ID = '1KgKY8KojhOgdqLIE8Dt4RDmqbiyLQOErD3q0CJTlhDU';
         const API_KEY = 'AIzaSyBkKVtdfFbFfdFE8FqSaUGZvptxj0Fysco';
         let RANGE = 'All Files!A1:J';
         let tableData = [];
+        let allSheetsData = {}; // Store data from all sheets
+        let allSheetNames = []; // Store all sheet names
+        let currentDocument = ""; // Store current document info
 
         function fetchSheetNames() {
             fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?key=${API_KEY}`)
                 .then(response => response.json())
                 .then(data => {
                     const sheetSelector = document.getElementById('sheetSelector');
+                    allSheetNames = data.sheets.map(sheet => sheet.properties.title);
                     data.sheets.forEach(sheet => {
                         const option = document.createElement('option');
                         option.value = `${sheet.properties.title}!A1:J`;
@@ -257,19 +297,32 @@
                         row[2] = row[2] || 'No Date Provided';
                         return row;
                     });
+                    // Store data for the current sheet
+                    const sheetName = RANGE.split('!')[0];
+                    allSheetsData[sheetName] = tableData;
+                    
                     renderTable(tableData);
                     updateSummary(tableData);
                     document.getElementById('loading').style.display = 'none';
                 });
         }
 
-        function renderTable(data) {
+        function renderTable(data, showSheetName = false) {
             const tbody = document.querySelector('#dataTable tbody');
             tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="10" style="text-align: center;">No matching results found</td>';
+                tbody.appendChild(tr);
+                return;
+            }
+            
             data.forEach(row => {
                 const tr = document.createElement('tr');
                 const statusClass = `status-${row[6]?.toLowerCase().replace(' ', '-') || 'new'}`;
-                tr.innerHTML = `
+                
+                let tableHTML = `
                     <td>${row[0] || 'N/A'}</td>
                     <td><a href="${row[1]}" target="_blank" style="color: #3498db;">View</a></td>
                     <td>${row[2]}</td>
@@ -280,6 +333,13 @@
                     <td>${row[7] || ''}</td>
                     <td><button class="action-btn" onclick="copyLink('${row[1]}')">Copy Link</button></td>
                 `;
+                
+                // Add sheet name column if showing results from multiple sheets
+                if (showSheetName && row.sheetName) {
+                    tableHTML = `<td style="font-weight: bold; color: #3498db;">${row.sheetName}</td>` + tableHTML;
+                }
+                
+                tr.innerHTML = tableHTML;
                 tbody.appendChild(tr);
             });
         }
@@ -312,6 +372,84 @@
             renderTable(filteredData);
             updateSummary(filteredData);
         }
+        
+        function searchAcrossAllSheets() {
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            if (!searchInput) {
+                alert('Please enter a search term');
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'flex';
+            
+            // If we haven't loaded all sheets yet, load them now
+            const sheetsToLoad = allSheetNames.filter(name => !allSheetsData[name]);
+            
+            if (sheetsToLoad.length > 0) {
+                // We need to load data from multiple sheets
+                let loadedCount = 0;
+                sheetsToLoad.forEach(sheetName => {
+                    fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${sheetName}!A1:J?key=${API_KEY}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const sheetData = data.values.slice(1).map(row => {
+                                row[2] = row[2] || 'No Date Provided';
+                                // Add sheet name to each row for display
+                                row.sheetName = sheetName;
+                                return row;
+                            });
+                            allSheetsData[sheetName] = sheetData;
+                            loadedCount++;
+                            
+                            if (loadedCount === sheetsToLoad.length) {
+                                performMultiSheetSearch(searchInput, statusFilter);
+                            }
+                        });
+                });
+            } else {
+                // All sheet data is already loaded
+                performMultiSheetSearch(searchInput, statusFilter);
+            }
+        }
+        
+        function performMultiSheetSearch(searchInput, statusFilter) {
+            // Collect all data from all sheets
+            let allData = [];
+            for (const sheetName in allSheetsData) {
+                const sheetData = allSheetsData[sheetName].map(row => {
+                    // Create a copy of the row with the sheet name
+                    const newRow = [...row];
+                    newRow.sheetName = sheetName;
+                    return newRow;
+                });
+                allData = allData.concat(sheetData);
+            }
+            
+            // Filter the combined data
+            const searchResults = allData.filter(row => {
+                const matchesSearch = row.some(cell => 
+                    cell?.toString().toLowerCase().includes(searchInput)
+                );
+                const matchesStatus = !statusFilter || (row[6] || 'New') === statusFilter;
+                return matchesSearch && matchesStatus;
+            });
+            
+            // Update table header to include Sheet Name column
+            const headerRow = document.querySelector('#dataTable thead tr');
+            if (!headerRow.querySelector('th[data-sheet-name]')) {
+                const sheetNameHeader = document.createElement('th');
+                sheetNameHeader.textContent = 'Sheet Name';
+                sheetNameHeader.setAttribute('data-sheet-name', 'true');
+                headerRow.insertBefore(sheetNameHeader, headerRow.firstChild);
+            }
+            
+            // Render results
+            renderTable(searchResults, true);
+            updateSummary(searchResults);
+            document.getElementById('loading').style.display = 'none';
+        }
 
         function copyLink(url) {
             navigator.clipboard.writeText(url).then(() => alert('Link copied to clipboard!'));
@@ -320,8 +458,87 @@
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
         }
-
-        window.onload = fetchSheetNames;
+        
+        // Function to toggle text wrapping
+        function toggleTextWrap() {
+            const tableContainer = document.querySelector('.table-container');
+            tableContainer.classList.toggle('wrap-text');
+        }
+        
+        // Function to show document tooltip when cursor is at top
+        function setupDocumentTooltip() {
+            const tooltip = document.getElementById('documentTooltip');
+            const sheetSelector = document.getElementById('sheetSelector');
+            
+            // Update current document information
+            function updateDocumentInfo() {
+                const selectedSheet = sheetSelector.options[sheetSelector.selectedIndex]?.text || 'All Files';
+                currentDocument = `Viewing: ${selectedSheet} (${tableData.length} records)`;
+                tooltip.textContent = currentDocument;
+            }
+            
+            // Show tooltip when cursor is near top of page
+            document.addEventListener('mousemove', (e) => {
+                if (e.clientY < 50) {
+                    tooltip.style.display = 'block';
+                    updateDocumentInfo();
+                } else {
+                    tooltip.style.display = 'none';
+                }
+            });
+            
+            // Update tooltip when sheet changes
+            sheetSelector.addEventListener('change', updateDocumentInfo);
+        }
+        
+        // Function to export current table data to CSV
+        function exportToCSV() {
+            // Get header row
+            const headers = Array.from(document.querySelectorAll('#dataTable th'))
+                .map(th => th.textContent.trim());
+                
+            // Convert tableData to CSV format
+            let csvContent = headers.join(',') + '\n';
+            
+            // Get currently displayed data (filtered or all)
+            const displayedRows = document.querySelectorAll('#dataTable tbody tr');
+            
+            // For each row, extract the text content
+            displayedRows.forEach(row => {
+                const rowData = Array.from(row.querySelectorAll('td'))
+                    .map(td => {
+                        // Handle cells with links or other elements
+                        let text = td.textContent.trim();
+                        
+                        // Escape quotes and wrap with quotes if contains comma
+                        text = text.replace(/"/g, '""');
+                        if (text.includes(',')) {
+                            text = `"${text}"`;
+                        }
+                        
+                        return text;
+                    })
+                    .join(',');
+                    
+                csvContent += rowData + '\n';
+            });
+            
+            // Create download link
+            const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `CELE_Data_Export_${new Date().toISOString().split('T')[0]}.csv`);
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        window.onload = function() {
+            fetchSheetNames();
+            setupDocumentTooltip();
+        };
     </script>
 </body>
 </html>
