@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Data Dashboard 2025</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Train HOG & MiSLINK Dashboard</h1>
+        <div class="dashboard-report-btn-row" id="dashboardReportBtnRow">
+            <button class="special-btn" id="btnMisLink">MIS LINK</button>
+            <button class="special-btn" id="btnMisHOG">MIS HOG</button>
+            <div class="quick-reports-top" id="quickReportsTop">
+                <h2 style="font-size:1.1em;display:inline;margin-right:8px;">Quick Reports</h2>
+                <div class="report-buttons" id="reportButtons" style="display:inline-block;"></div>
+            </div>
+        </div>
+    </header>
+    <div class="filters card" role="region" aria-label="Filters">
+        <div class="filter-container">
+            <div class="filter-group">
+                <div class="filter-item">
+                    <label for="divisionFilter">Division</label>
+                    <select id="divisionFilter" onchange="fetchData()" aria-label="Select Division">
+                        <option value="">All Divisions</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label for="betweenDate">Between Date</label>
+                    <input type="checkbox" id="betweenDate" checked onclick="toggleDateSelection('betweenDate')" aria-label="Select Between Date Range">
+                </div>
+                <div class="filter-item">
+                    <label for="dateRange">Date Range</label>
+                    <input type="checkbox" id="dateRange" onclick="toggleDateSelection('dateRange')" aria-label="Select Quick Date Range">
+                </div>
+                <div class="filter-item" id="betweenDateInputs">
+                    <label for="startDate">Start Date: <span class="required">*</span></label>
+                    <input type="date" id="startDate" required aria-required="true" onchange="fetchData()"> 
+                    <label for="endDate">End Date: <span class="required">*</span></label>
+                    <input type="date" id="endDate" required aria-required="true" onchange="handleEndDateChange()">
+                </div>
+                <div class="filter-item hidden" id="dateRangeInput">
+                    <label for="dateRangeSelect">Quick Range:</label>
+                    <select id="dateRangeSelect" onchange="handleDateRangeChange()">
+                        <option value="">Select Range</option>
+                        <option value="2">2 Days</option>
+                        <option value="3">3 Days</option>
+                        <option value="8">8 Days</option>
+                        <option value="16">16 Days</option>
+                    </select>
+                </div>
+                <button class="btn refresh-btn" onclick="fetchData()" aria-label="Refresh Data">
+                    <span class="icon">🔄</span> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="dashboard" role="main">
+
+        <div class="summary card" id="trainSummaryTable" aria-label="Train Summary"></div>
+    <div class="popup-overlay" id="popupOverlay" aria-hidden="true"></div>
+    <div class="popup card" id="combinedPopup" role="dialog" aria-labelledby="combinedPopupTitle">
+        <div class="popup-header">
+            <h2 id="combinedPopupTitle" class="visually-hidden">Train Data Details</h2>
+            <button class="btn close-btn" onclick="closePopup()" aria-label="Close Popup">
+                <span class="icon">&#10006;</span>
+            </button>
+        </div>
+        <div class="popup-content">
+            <div class="popup-table">
+                <table id="combinedPopupTable" aria-label="Detailed Train Data Table"></table>
+            </div>
+        </div>
+    </div>
+    <div class="hover-popup" id="hoverPopup" aria-hidden="true"></div>
+
+    <!-- MIS LINK Popup -->
+    <div class="popup-overlay" id="misLinkPopupOverlay" aria-hidden="true"></div>
+    <div class="popup card" id="misLinkPopup" role="dialog" aria-labelledby="misLinkPopupTitle">
+        <div class="popup-header">
+            <h2 id="misLinkPopupTitle">MIS LINK</h2>
+            <button class="btn close-btn" onclick="closeMisLinkPopup()" aria-label="Close MIS LINK Popup">
+                <span class="icon">&#10006;</span>
+            </button>
+        </div>
+        <div class="popup-content" id="misLinkPopupContent">
+            <!-- Division filter -->
+            <div class="popup-division-filter" style="margin-bottom:10px;">
+                <label for="misLinkDivisionFilter">Division:</label>
+                <select id="misLinkDivisionFilter" aria-label="MIS LINK Division Filter">
+                    <option value="">All Divisions</option>
+                    <!-- JS will populate options -->
+                </select>
+            </div>
+            <!-- Inline date filter row -->
+            <div class="popup-date-filter" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <label for="misLinkStartDate">Start Date:</label>
+                <input type="date" id="misLinkStartDate" aria-label="MIS LINK Start Date">
+                <label for="misLinkEndDate">End Date:</label>
+                <input type="date" id="misLinkEndDate" aria-label="MIS LINK End Date">
+                <button class="btn" id="misLinkFilterBtn" style="margin-left:10px;">Refresh</button>
+            </div>
+            <div class="bifurcate-tabs">
+                <button class="bifurcate-btn active" id="misLinkTabTRF">Outgoing (TRF)</button>
+                <button class="bifurcate-btn" id="misLinkTabIRF">Incoming (IRF)</button>
+            </div>
+            <!-- Data summary above chart -->
+            <div id="misLinkChartSummary" class="chart-summary-row" style="margin-bottom:6px;font-weight:500;color:#0077b6;"></div>
+            <!-- Single chart for both TRF/IRF -->
+            <div style="margin-bottom:10px;">
+                <canvas id="misLinkChartCombined" height="120"></canvas>
+            </div>
+            <!-- Date-wise table below chart -->
+            <div id="misLinkChartTableContainer" style="margin-bottom:10px;">
+                <table id="misLinkChartTable" class="universal-table" aria-label="MIS LINK Date-wise Data Table"></table>
+            </div>
+            <div id="misLinkTRFTable" class="bifurcate-table"></div>
+            <div id="misLinkIRFTable" class="bifurcate-table" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- MIS HOG Popup -->
+    <div class="popup-overlay" id="misHOGPopupOverlay" aria-hidden="true"></div>
+    <div class="popup card" id="misHOGPopup" role="dialog" aria-labelledby="misHOGPopupTitle">
+        <div class="popup-header">
+            <h2 id="misHOGPopupTitle">MIS HOG</h2>
+            <button class="btn close-btn" onclick="closeMisHOGPopup()" aria-label="Close MIS HOG Popup">
+                <span class="icon">&#10006;</span>
+            </button>
+        </div>
+        <div class="popup-content" id="misHOGPopupContent">
+            <!-- Division filter -->
+            <div class="popup-division-filter" style="margin-bottom:10px;">
+                <label for="misHOGDivisionFilter">Division:</label>
+                <select id="misHOGDivisionFilter" aria-label="MIS HOG Division Filter">
+                    <option value="">All Divisions</option>
+                    <!-- JS will populate options -->
+                </select>
+            </div>
+            <!-- Inline date filter row -->
+            <div class="popup-date-filter" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <label for="misHOGStartDate">Start Date:</label>
+                <input type="date" id="misHOGStartDate" aria-label="MIS HOG Start Date">
+                <label for="misHOGEndDate">End Date:</label>
+                <input type="date" id="misHOGEndDate" aria-label="MIS HOG End Date">
+                <button class="btn" id="misHOGFilterBtn" style="margin-left:10px;">Refresh</button>
+            </div>
+            <div class="bifurcate-tabs">
+                <button class="bifurcate-btn active" id="misHOGTabTRF">Outgoing (TRF)</button>
+                <button class="bifurcate-btn" id="misHOGTabIRF">Incoming (IRF)</button>
+            </div>
+            <!-- Data summary above chart -->
+            <div id="misHOGChartSummary" class="chart-summary-row" style="margin-bottom:6px;font-weight:500;color:#0077b6;"></div>
+            <!-- Single chart for both TRF/IRF -->
+            <div style="margin-bottom:10px;">
+                <canvas id="misHOGChartCombined" height="120"></canvas>
+            </div>
+            <!-- Date-wise table below chart -->
+            <div id="misHOGChartTableContainer" style="margin-bottom:10px;">
+                <table id="misHOGChartTable" class="universal-table" aria-label="MIS HOG Date-wise Data Table"></table>
+            </div>
+            <div id="misHOGTRFTable" class="bifurcate-table"></div>
+            <div id="misHOGIRFTable" class="bifurcate-table" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- Google Sheet Reports Popup -->
+    <div class="popup-overlay" id="gsheetPopupOverlay" aria-hidden="true"></div>
+    <div class="popup card" id="gsheetPopup" role="dialog" aria-labelledby="gsheetPopupTitle">
+        <div class="popup-header">
+            <h2 id="gsheetPopupTitle">Google Sheet Reports</h2>
+            <button class="btn close-btn" onclick="closeGSheetPopup()" aria-label="Close Google Sheet Popup">
+                <span class="icon">&#10006;</span>
+            </button>
+        </div>
+        <div class="popup-content" id="gsheetPopupContent">
+            <div class="popup-date-filter">
+                <label for="gsheetStartDate">Start Date:</label>
+                <input type="date" id="gsheetStartDate" aria-label="Google Sheet Start Date">
+                <label for="gsheetEndDate">End Date:</label>
+                <input type="date" id="gsheetEndDate" aria-label="Google Sheet End Date">
+                <button class="btn" id="gsheetFilterBtn">Filter</button>
+            </div>
+            <div class="bifurcate-tabs">
+                <button class="bifurcate-btn active" id="gsheetTabTRF">Outgoing (TRF)</button>
+                <button class="bifurcate-btn" id="gsheetTabIRF">Incoming (IRF)</button>
+            </div>
+            <div id="gsheetTRFTable" class="bifurcate-table"></div>
+            <div id="gsheetIRFTable" class="bifurcate-table" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- Chart.js CDN for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+
+    <!-- Reusable Report Modal -->
+    <div class="popup-overlay" id="reportPopupOverlay" aria-hidden="true"></div>
+    <div class="popup card" id="reportPopup" role="dialog" aria-labelledby="reportPopupTitle">
+        <div class="popup-header">
+            <h2 id="reportPopupTitle">Report</h2>
+            <button class="btn close-btn" onclick="closeReportPopup()" aria-label="Close Report Popup">
+                <span class="icon">&#10006;</span>
+            </button>
+        </div>
+        <div class="popup-content" id="reportPopupContent"></div>
+    </div>
+</body>
+</html>
